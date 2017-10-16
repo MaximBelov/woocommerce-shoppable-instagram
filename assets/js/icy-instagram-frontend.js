@@ -1,323 +1,312 @@
-(function($) {
+(function ($) {
 
 
+  var IcyInstagram = (function () {
 
-	var IcyInstagram = (function() {
 
+    var mediaOpen = false;
 
 
-		var mediaOpen = false;
+    var hotspots = ( typeof icyig_hs_contents === 'object' && icyig_hs_contents !== null ) ? icyig_hs_contents : {};
 
 
+    var image_meta = ( typeof icyig_image_meta === 'object' && icyig_image_meta !== null ) ? icyig_image_meta : {};
 
-		var hotspots = ( typeof icyig_hs_contents === 'object' && icyig_hs_contents !== null ) ? icyig_hs_contents : {};
 
+    var _events = function () {
 
+      /**
 
-		var image_meta = ( typeof icyig_image_meta === 'object' && icyig_image_meta !== null ) ? icyig_image_meta : {};
+       * Open the lightbox
 
+       */
 
+      // $('.icyig-container .icyig-thumb-container').on('click', function (e) {
+      //
+      //   e.preventDefault();
+      //
+      //
+      //   if (mediaOpen !== false)
+      //
+      //     return false;
+      //
+      //
+      //   var thumb = $(this).children('.icyig-thumb');
+      //
+      //
+      //   _showDetail(thumb);
+      //
+      // });
 
-		var _events = function() {
 
-			/**
+      $('.icyig-container').magnificPopup({
+        delegate: 'a',
+        key: 'some-key',
+        type: 'inline',
+        gallery: {
+          enabled: true
+        },
+        preload: false,
+        callbacks: {
+          beforeOpen: function () {
+            var thumb = $(this.st.el).find('.icyig-thumb');
+            _showDetail(thumb);
+          },
+          open: function () {
+            // console.log(this);
+          },
+          buildControls: function () {
+            // this.content.append(this.arrowLeft.add(this.arrowRight));
+          },
 
-			 * Open the lightbox
+          change: function () {
 
-			 */
+            var detail = this.content.find('.icyig-detail');
 
-			$('.icyig-container .icyig-thumb-container').on('click', function(e) {
+            var thumb = $(this.currItem.el[0]).find('.icyig-thumb');
 
-				e.preventDefault();
+            _showDetail(thumb, detail);
 
+          }
 
+        }
+      });
 
-				if( mediaOpen !== false )
+      $('.icyig-detail').on('mouseover', '.hotspot-link-container a', function (e) {
 
-					return false;
+        var hotspot = $(this).attr('data-hotspot');
 
+        $('.icyig-hotspot[data-hotspot=' + hotspot + ']').addClass('active');
 
+      }).on('mouseout', '.hotspot-link-container a', function (e) {
 
-				var thumb = $(this).children('.icyig-thumb');
+        $('.icyig-hotspot').removeClass('active');
 
+      });
 
+    };
 
-				_showDetail(thumb);
 
-			});
+    var _addSocialLinks = function (detail) {
 
+      var detailContainer = '';
 
+      if (typeof  detail === 'undefined') {
+        detailContainer = $('.icyig-detail');
+      }
+      else {
+        detailContainer = detail;
+      }
 
+      if (detailContainer.find('.icyig-social-link-container').length > 0) {
 
+        detailContainer.find('.icyig-social-link-container').each(function () {
 
-			/**
+          var network = $(this).attr('data-network');
 
-			 * Close the lightbox
+          var link = $(this).children('a');
 
-			 */
+          var instagramLink = encodeURIComponent(image_meta[mediaOpen].link);
 
-			$('.icyig-detail').on('click', function(e) {
+          var caption = image_meta[mediaOpen].caption;
 
-				var target = jQuery( e.target );
+          var image = encodeURIComponent(image_meta[mediaOpen].image);
 
 
+          if (network != '' && typeof network !== 'undefined') {
 
-				if( target.is('.icyig-detail' ) ) {
+            switch (network) {
 
-					e.preventDefault();
+              case 'facebook' :
 
-					_closeDetail();
+                link.attr('href', 'https://www.facebook.com/sharer/sharer.php?u=' + instagramLink);
 
-				}
+                break;
 
-			});
+              case 'twitter' :
 
+                var captionLength = 130 - image_meta[mediaOpen].link.length;
 
+                if (caption && typeof caption !== 'undefined') {
+                  if (caption.length > captionLength) {
+                    text = caption.substr(0, captionLength) + '...';
+                  } else {
+                    text = caption;
+                  }
+                } else {
+                  text = '';
+                }
 
-			$('.icyig-close-detail').on('click', function(e) {
+                link.attr('href', 'https://www.twitter.com/share?url=' + instagramLink + '&text=' + text + '&related=' + image_meta[mediaOpen].user.username);
 
-				e.preventDefault();
+                break;
 
-				_closeDetail();
+              case 'google' :
 
-			});
+                link.attr('href', 'https://plus.google.com/share?url=' + instagramLink);
 
+                break;
 
+              case 'pinterest' :
 
-			$('.icyig-detail').on('mouseover', '.hotspot-link-container a', function(e) {
+                link.attr('href', 'https://www.pinterest.com/pin/create/button/?url=' + instagramLink + '&media=' + image + '&description=' + caption);
 
-				var hotspot = $(this).attr('data-hotspot');
+                break;
 
+              case 'instagram' :
 
+                link.attr('href', image_meta[mediaOpen].link);
 
-				$('.icyig-hotspot[data-hotspot=' + hotspot + ']').addClass('active');
+                break;
 
-			}).on('mouseout', '.hotspot-link-container a', function(e) {
+              case 'email' :
 
-				$('.icyig-hotspot').removeClass('active');
+                link.attr('href', 'mailto:?body=' + caption + '%0D%0A' + instagramLink);
 
-			});
+                break;
 
-		};
+            }
 
+          }
 
+        });
 
+      }
 
 
-		var _addSocialLinks = function() {
+    };
 
-			if( $('.icyig-detail .icyig-social-link-container').length > 0 ) {
 
-				$('.icyig-detail .icyig-social-link-container').each(function() {
+    var _showDetail = function (media, detail) {
 
-					var network = $(this).attr('data-network');
+      var detailContainer = '';
 
-					var link = $(this).children('a');
+      if (typeof  detail === 'undefined') {
+        detailContainer = $('.icyig-detail');
+      }
+      else {
+        detailContainer = detail;
+      }
 
-					var instagramLink = encodeURIComponent( image_meta[mediaOpen].link );
+      detailContainer.find('.icyig-image-container').html('');
+      detailContainer.find('.icyig-content-container').html('');
 
-					var caption = image_meta[mediaOpen].caption;
+      $media = $(media);
 
-					var image = encodeURIComponent( image_meta[mediaOpen].image );
+      mediaOpen = $media.attr('data-image-id');
 
+      _addSocialLinks();
 
+      detailContainer.find('.icyig-image-container').html('<img src="' + $media.attr('data-image-src') + '" class="icyig-image-full" />');
 
-					if( network != '' && typeof network !== 'undefined' ) {
 
-						switch( network ) {
+      var imageID = $media.attr('data-image-id');
 
-							case 'facebook' :
+      var caption = '';
 
-								link.attr('href', 'https://www.facebook.com/sharer/sharer.php?u=' + instagramLink);
+      if (image_meta[imageID].caption && typeof image_meta[imageID].caption !== 'undefined') {
+        caption = image_meta[imageID].caption;
+      }
 
-								break;
+      var dc = [], i = 0;
 
-							case 'twitter' :
 
-								var captionLength = 130 - image_meta[mediaOpen].link.length;
+      dc[i++] = '<div style="display: none !important;" class="instagram-share" data-link="' + $media.attr('data-link') + '" data-caption="' + $media.attr('data-caption') + '"></div>';
 
-								if( caption && typeof caption !== 'undefined' ) {
-									if( caption.length > captionLength ) {
-										text = caption.substr(0, captionLength) + '...';
-									}else {
-										text = caption;
-									}
-								}else {
-									text = '';
-								}
 
-								link.attr('href', 'https://www.twitter.com/share?url=' + instagramLink + '&text=' + text + '&related=' + image_meta[mediaOpen].user.username );
+      dc[i++] = '<div class="icyig-meta-container"><span class="icyig-likes">' + image_meta[imageID].likes + ' likes</span><span class="icyig-timeago">' + image_meta[imageID].timestamp + '</span></div>';
 
-								break;
 
-							case 'google' :
+      dc[i++] = '<div class="icyig-caption"><div class="icyig-caption-user" style="display:none;">' +
+        '<a href="https://www.instagram.com/' + image_meta[imageID].user.username + '" target="_blank">' + image_meta[imageID].user.username + '</a>' +
+        '</div> ' + caption + '</div>';
 
-								link.attr('href', 'https://plus.google.com/share?url=' + instagramLink );
 
-								break;
+      // Check if the image is listed in the array of images
 
-							case 'pinterest' :
+      // that have hotspots
 
-								link.attr('href', 'https://www.pinterest.com/pin/create/button/?url=' + instagramLink + '&media=' + image + '&description=' + caption );
+      if (imageID in hotspots) {
 
-								break;
+        if (typeof hotspots[imageID].hotspots === 'object') {
 
-							case 'instagram' :
+          var imageHotspots = hotspots[imageID].hotspots;
 
-								link.attr('href', image_meta[mediaOpen].link );
 
-								break;
+          // Loop through the hotspots
 
-							case 'email' :
+          var c = 1;
 
-								link.attr('href', 'mailto:?body=' + caption + '%0D%0A' + instagramLink);
+          for (var property in imageHotspots) {
 
-								break;
+            if (imageHotspots.hasOwnProperty(property)) {
 
-						}
 
-					}
 
-				});
+              // Append the hotspots to the image
 
-			}
+              detailContainer.find('.icyig-image-container').append('<a class="icyig-hotspot" href="' + imageHotspots[property].url + '" target="_blank" data-hotspot="' + property + '" style="top: ' + imageHotspots[property].yPos + '%; left: ' + imageHotspots[property].xPos + '%;">' + c + '</a>');
 
-			
+              var image = '';
+              if (imageHotspots[property].image) {
+                image = '<a href="' + imageHotspots[property].url + '" target="_blank" data-hotspot="' + property + '">' +
+                  '<img src="' + imageHotspots[property].image + '"/>' +
+                  '</a>';
+              }
 
-		};
 
+              dc[i++] = '<div class="hotspot-link-container">' +
+                '<a href="' + imageHotspots[property].url + '" target="_blank" data-hotspot="' + property + '">' +
+                '<span class="hs-count">' + c + '</span>' +
+                imageHotspots[property].title +
+                '</a>' +
+                image +
+                '</div>';
 
+              c++;
 
+            }
 
+          }
 
-		var _showDetail = function( media ) {
+        }
 
-			$media = $(media);
+      }
 
 
+      detailContainer.find('.icyig-content-container').append(dc.join(''));
 
-			mediaOpen = $media.attr('data-image-id');
+    };
 
 
+    var _closeDetail = function () {
 
-			_addSocialLinks();
+      mediaOpen = false;
 
 
+      $('.icyig-detail').addClass('hidden');
 
 
+      $('.icyig-content-container, .icyig-image-container').html('');
 
-			$('.icyig-detail').removeClass('hidden');
+    };
 
-			$('.icyig-detail .icyig-image-container').html( '<img src="' + $media.attr('data-image-src') + '" class="icyig-image-full" />' );
 
+    return {
 
+      init: function () {
 
-			var imageID = $media.attr('data-image-id');
+        return _events();
 
-			var caption = '';
+      }
 
-			if( image_meta[imageID].caption && typeof image_meta[imageID].caption !== 'undefined' ) {
-				caption = image_meta[imageID].caption;
-			}
+    }
 
-			var dc = [], i = 0;
 
+  })(jQuery);
 
 
-			dc[i++] = '<div style="display: none !important;" class="instagram-share" data-link="' + $media.attr('data-link') + '" data-caption="' + $media.attr('data-caption') + '"></div>';
-
-
-
-			dc[i++] = '<div class="icyig-meta-container"><span class="icyig-likes">' + image_meta[imageID].likes + ' likes</span><span class="icyig-timeago">' + image_meta[imageID].timestamp + '</span></div>';
-
-
-
-			dc[i++] = '<div class="icyig-caption"><span class="icyig-caption-user"><a href="https://www.instagram.com/' + image_meta[imageID].user.username + '" target="_blank">' + image_meta[imageID].user.username + '</a></span> ' + caption + '</div>';
-
-
-
-			// Check if the image is listed in the array of images
-
-			// that have hotspots
-
-			if( imageID in hotspots ) {
-
-				if( typeof hotspots[imageID].hotspots === 'object' ) {
-
-					var imageHotspots = hotspots[imageID].hotspots;
-
-
-
-					// Loop through the hotspots
-
-					var c = 1;
-
-					for( var property in imageHotspots ) {
-
-					    if( imageHotspots.hasOwnProperty( property ) ) {
-
-
-
-					    	// Append the hotspots to the image
-
-					        $('.icyig-detail .icyig-image-container').append( '<a class="icyig-hotspot" href="' + imageHotspots[property].url + '" target="_blank" data-hotspot="' + property + '" style="top: ' + imageHotspots[property].yPos + '%; left: ' + imageHotspots[property].xPos + '%;">' + c + '</a>' );
-
-
-
-					        dc[i++] = '<div class="hotspot-link-container"><a href="' + imageHotspots[property].url + '" target="_blank" data-hotspot="' + property + '"><span class="hs-count">' + c + '</span>' + imageHotspots[property].title + '</a></div>';
-
-					        c++;
-
-					    }
-
-					}
-
-				}
-
-			}
-
-
-
-			$('.icyig-detail .icyig-content-container').append( dc.join('') );
-
-		};
-
-
-
-		var _closeDetail = function() {
-
-			mediaOpen = false;
-
-
-
-			$('.icyig-detail').addClass('hidden');
-
-
-
-			$('.icyig-content-container, .icyig-image-container').html('');
-
-		};
-
-
-
-		return {
-
-			init : function() {
-
-				return _events();
-
-			}
-
-		}
-
-
-
-	})(jQuery);
-
-
-
-	IcyInstagram.init();
-
+  IcyInstagram.init();
 
 
 })(jQuery);

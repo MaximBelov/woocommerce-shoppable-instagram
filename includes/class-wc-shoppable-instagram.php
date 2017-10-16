@@ -1,7 +1,17 @@
 <?php
 
+use InstagramScraper\Instagram;
 
 class WC_Shoppable_Instagram {
+
+	protected $_instagram;
+
+
+	private $_api_key = null;
+
+
+	private $_api_secret = null;
+
 
 	private $token = null;
 
@@ -9,50 +19,59 @@ class WC_Shoppable_Instagram {
 	private $_errors = array();
 
 
+	const API_URL = 'https://api.instagram.com/v1/';
+
+
+	public function __construct() {
+		$this->init();
+		$this->includes();
+	}
+
+
+	private function init() {
+		$settings_value = get_option( 'icy_instagram_feed' );
+	}
+
+
 	public function admin_init() {
-		global $wcsi_admin;
+		global $wcsi_admin, $wcsi_settings;
 
 		$page = isset( $_GET['page'] ) ? esc_attr( $_GET['page'] ) : '';
-		
-		$wcsi_admin->settings();
 
-		add_action( 'update_option_icy_instagram_config_settings', array( $this, 'deleteCache' ) );
 
-		add_action( 'wp_ajax_icyig_update', array( $wcsi_admin, 'cleanup_hotspots' ) );
+		$wcsi_admin->admin_init();
+		//$wcsi_admin->admin_menu();
+		//$wcsi_settings->init();
+
+		$wcsi_settings->init();
+
+		add_action( 'admin_enqueue_scripts', array( $wcsi_admin, 'admin_scripts' ), 99 );
+
+		add_action( 'wp_ajax_icyig_update', array( $wcsi_admin, 'update_database' ) );
 		add_action( 'wp_ajax_icyig_get_hotspots', array( $wcsi_admin, 'get_hotspots' ) );
 
-		if( $page == 'instagram-feed' ) {
-			add_action( 'admin_enqueue_scripts', array( $wcsi_admin, 'admin_scripts' ), 99 );
+		if ( $page == 'instagram-feed' ) {
 			add_action( 'admin_notices', array( $wcsi_admin, 'auth_check_notice' ) );
 
-			/**
-			 * Remove conflicting emojis on the settings page
-			 */
-			remove_action( 'admin_print_styles', 'print_emoji_styles' );
-			remove_action( 'wp_head', 'print_emoji_detection_script', 7 );
-			remove_action( 'admin_print_scripts', 'print_emoji_detection_script' );
-			remove_action( 'wp_print_styles', 'print_emoji_styles' );
-
-			if( isset( $_GET['token'] ) && $this->getToken() == 0 ) {
+			if ( isset( $_GET['token'] ) && $this->getToken() == 0 ) {
 				$wcsi_admin->updateAuth();
 			}
 
-			if( isset( $_GET['disconnect'] ) && $_GET['disconnect'] == 'true' ) {
+			if ( isset( $_GET['disconnect'] ) && $_GET['disconnect'] == 'true' ) {
 				$wcsi_admin->disconnectAuth();
 			}
 		}
 	}
 
 
-	public function frontend_scripts() {
-		wp_register_style( 'wcsi-frontend-style', WCSI_PLUGIN_URL . '/assets/css/icy-instagram-frontend.css', array(), WCSI_VER );
-		wp_register_script( 'wcsi-frontend-script', WCSI_PLUGIN_URL . '/assets/js/icy-instagram-frontend.js', array( 'jquery' ), WCSI_VER, true );
+	public function ig() {
+		return $this->_instagram;
 	}
 
 
 	public function getToken() {
 		$token = get_option( 'icy_instagram_feed_token' );
-		
+
 		return $token;
 	}
 
@@ -64,7 +83,7 @@ class WC_Shoppable_Instagram {
 	public function getUserID() {
 		$user_id = get_option( 'wcsi_user_id' );
 
-		if( $user_id ) {
+		if ( $user_id ) {
 			return absint( $user_id );
 		}
 
@@ -73,94 +92,164 @@ class WC_Shoppable_Instagram {
 
 
 	public function getCached() {
-		return get_transient( 'wcsi_stored_media' );
+
+		$json_data = file_get_contents(ABSPATH.'results.json');
+
+		return maybe_unserialize($json_data);
+
 	}
 
 
 	public function setCache( $media ) {
-		set_transient( 'wcsi_stored_media', $media, apply_filters( 'wcsi_stored_media_duration', 60 * 30 ) );
+
+		$fp = fopen(ABSPATH.'results.json', 'w');
+		$test = fwrite($fp, maybe_serialize($media));
+
+		fclose($fp);
+
+		set_transient( 'wcsi_stored_media', 'stored to results.json', apply_filters( 'wcsi_stored_media_duration', 60 * 60 * 24 ) );
 	}
 
 
 	public function deleteCache() {
 		wp_cache_flush();
-		
+
 		delete_transient( 'wcsi_stored_media' );
 	}
 
+	function getHashtags( $string ) {
+		$hashtags = false;
+		preg_match_all( "/(#\w+)/u", $string, $matches );
+		if ( $matches ) {
+			$hashtagsArray = array_count_values( $matches[0] );
+			$hashtags      = array_keys( $hashtagsArray );
+		}
 
-	public function getMedia( $num = 0 ) {
-		if( false === $this->getCached() ) {
-			$instagram = new WC_Shoppable_Instagram_API( $this->getToken() );
-			
-			$media = $instagram->get_media( $this->getUserID(), $num );
+		return $hashtags;
+	}
 
-			if( $instagram->has_errors() ) {
-				return false;
+	public function getMedia( $mediasP= array(), $maxId = '' ) {
+//		$medias = Instagram::getMedias( 'zhilyova_lingerie', $num );
+		$settings_value = get_option( 'icy_instagram_config_settings' );
+
+		if(!isset($settings_value['tags'])){
+			return false;
+		}
+
+		$inst = new Instagram;
+		$result = $inst->getPaginateMediasByTag($settings_value['tags'], $maxId);
+
+		$medias = $result['medias'];
+
+//		$this->setCache( $medias );
+//		$this->getCached( );
+
+//		die();
+
+		$medias = array_merge($medias, $mediasP);
+
+
+//		 See if we have media that is cached already
+		if ( false === $this->getCached() ) {
+
+
+			/*
+			Available properties:
+				$id;
+				$createdTime;
+				$type;
+				$link;
+				$imageLowResolutionUrl;
+				$imageThumbnailUrl;
+				$imageStandardResolutionUrl;
+				$imageHighResolutionUrl;
+				$caption;
+				$captionIsEdited;
+				$isAd;
+				$videoLowResolutionUrl;
+				$videoStandardResolutionUrl;
+				$videoLowBandwidthUrl;
+				$videoViews;
+				$code;
+				$owner;
+				$ownerId;
+				$likesCount;
+				$locationId;
+				$locationName;
+				$commentsCount;
+
+			*/
+
+			if(isset($settings_value['display_num'])){
+
+				if(
+					$result['hasNextPage'] === true
+				   && count($medias) < (int)$settings_value['display_num']
+				) {
+					return $this->getMedia($medias, $result['maxId']);
+				}
 			}
 
-			$result = array();
-
-			do {
-				if( ! empty( $media->data ) ) {
-					foreach( $media->data as $entry ) {
-						if( $entry->type == 'image' ) {
-							$result[] = $entry;
-
-							if( sizeof( $result ) >= $num )
-								break 2;
+			if ( is_array( $medias ) ) {
+				foreach ( $medias as $key => $media ) {
+					$media->tags    = $this->getHashtags( $media->caption );
+					$medias[ $key ] = $media;
+					if(isset($settings_value['author'])){
+						if($media->ownerId != $settings_value['author']){
+							unset($medias[$key]);
 						}
 					}
 				}
-
-				$media = $instagram->pagination( $media );
-
-
-				if( $instagram->has_errors() ) {
-					return $result;
-				}
-
-			}while( count( $result ) <= $num );
-
-			$this->setCache( $result );
-
-			return $result;
+			}
+			// Cache the results
+			$this->setCache( $medias );
+			return $medias;
 		}
 
 		return $this->getCached();
 	}
 
 
-	public function parse_data( $mdata ) {
-		if( $mdata && is_array( $mdata ) ) {
-			foreach( $mdata as $image_id => $imgdata ) {
-
-				if( ! isset( $imgdata['hotspots'] ) ) {
-					$mdata[$image_id]['hotspots'] = array();
-					$hotspots = array();
-				}else {
-					$hotspots = (array) $imgdata['hotspots'];
-				}
-
-				foreach( $hotspots as $hsid => $hotspot ) {
-					$product_id = isset( $hotspot['product_id'] ) ? (int) $hotspot['product_id'] : 0;
-
-					if( $product_id === 0 ) {
-						unset( $mdata[$image_id]['hotspots'][$hsid] );
-					}
-
-					$product_post_type = get_post_type( $product_id );
-
-					if( false !== $product_post_type ) {
-						if( in_array( $product_post_type, array( 'product', 'variation' ) ) ) {
-							$mdata[$image_id]['hotspots'][$hsid]['url'] = get_permalink( $product_id );
-							$mdata[$image_id]['hotspots'][$hsid]['title'] = get_the_title( $product_id );
-						}
-					}
-				}
-			}
+	public function has_errors( $media ) {
+		if ( isset( $media->meta->error_type ) ) {
+			return true;
 		}
 
-		return $mdata;
+		return false;
 	}
+
+
+	public function log_error( $media ) {
+		$this->_errors[] = $media->meta->error_message;
+	}
+
+
+	public function show_errors() {
+		if ( ! empty( $this->_errors ) ) {
+			foreach ( $this->_errors as $error ) {
+				print '<p class="ig-error">' . $error . '</p>';
+			}
+		}
+	}
+
+
+	public function includes() {
+
+	}
+
+
+	public function plugin_url() {
+		return untrailingslashit( plugin_dir_url( __FILE__ ) );
+	}
+
+
+	public function plugin_path() {
+		return untrailingslashit( plugin_dir_path( __FILE__ ) );
+	}
+
+
+	public function template_path() {
+		return untrailingslashit( plugin_dir_path( __FILE__ ) ) . '/templates';
+	}
+
 }

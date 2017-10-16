@@ -1,4 +1,11 @@
-
+.white-popup {
+	position: relative;
+	background: #FFF;
+	padding: 5px;
+	width: auto;
+	max-width: 1000px;
+	margin: 20px auto;
+}
 
 .icyig-container,
 
@@ -142,43 +149,43 @@
 
 .icyig-detail {
 
-    display: flex;
+    /*display: flex;*/
+    /**/
+    /*position: fixed;*/
 
-    position: fixed;
+    /*top: 0;*/
 
-    top: 0;
+    /*left: 0;*/
 
-    left: 0;
+    /*right: 0;*/
 
-    right: 0;
+    /*bottom: 0;*/
 
-    bottom: 0;
+    /*align-items: center;*/
 
-    align-items: center;
+    /*justify-content: center;*/
 
-    justify-content: center;
+    /*overflow: auto;*/
 
-    overflow: auto;
+    /*z-index: 15001;*/
 
-    z-index: 15001;
+    /*background: rgba(0, 0, 0, 0.85);*/
 
-    background: rgba(0, 0, 0, 0.85);
+    /*display: -webkit-flex;*/
 
-    display: -webkit-flex;
+    /*-webkit-flex-direction: column;*/
 
-    -webkit-flex-direction: column;
+    /*-webkit-align-items: center;*/
 
-    -webkit-align-items: center;
+    /*-webkit-justify-content: center;*/
 
-    -webkit-justify-content: center;
+    /*display: -ms-flexbox;*/
 
-    display: -ms-flexbox;
+    /*-ms-flex-direction: column;*/
 
-    -ms-flex-direction: column;
+    /*-ms-flex-align: center;*/
 
-    -ms-flex-align: center;
-
-    -ms-flex-pack: center;
+    /*-ms-flex-pack: center;*/
 
 }
 
@@ -199,21 +206,21 @@ body .icyig-detail a {
 
 	display: block;
 
-	position: absolute;
+	/*position: absolute;*/
 
-	top: 5px;
+	/*top: 5px;*/
 
-	left: 5px;
+	/*left: 5px;*/
 
-	right: 5px;
+	/*right: 5px;*/
 
-	bottom: 5px;
+	/*bottom: 5px;*/
 
 	max-height: 100%;
 
 	background: #ffffff;
 
-	padding: 15px;
+	/*padding: 15px;*/
 
 	overflow: auto;
 

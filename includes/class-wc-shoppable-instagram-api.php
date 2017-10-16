@@ -18,6 +18,7 @@ class WC_Shoppable_Instagram_API {
 	public function get_media( $user = 'self', $count = 10 ) {
 		$response = $this->request( '/users/' . $user . '/media/recent/',  array( 'count' => absint( $count ) ) );
 
+
 		if( is_wp_error( $response ) ) {
 			$this->log_error( $response->get_error_message() );
 

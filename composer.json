@@ -1,0 +1,12 @@
+{
+    "name": "belov/zhilyova",
+    "authors": [
+        {
+            "name": "Maxim Belov",
+            "email": "belov1988@gmail.com"
+        }
+    ],
+    "require": {
+        "raiym/instagram-php-scraper": "^0.6.1"
+    }
+}
